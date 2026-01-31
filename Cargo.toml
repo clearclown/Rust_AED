@@ -1,0 +1,83 @@
+[package]
+name = "rust-aed"
+version = "0.1.0"
+edition = "2024"
+authors = ["clearclown"]
+description = "Claude Vision API を活用した Rust 製 OCR・ドキュメント抽出ライブラリ"
+license = "MIT"
+repository = "https://github.com/example/rust-aed"
+documentation = "https://docs.rs/rust-aed"
+readme = "README.md"
+keywords = ["ocr", "claude", "vision", "japanese", "document-extraction"]
+categories = ["text-processing", "api-bindings"]
+
+[features]
+default = []
+cli = ["clap"]
+
+[dependencies]
+# 非同期ランタイム
+tokio = { version = "1", features = ["full"] }
+
+# HTTP クライアント
+reqwest = { version = "0.12", features = ["json", "stream"] }
+
+# シリアライズ
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# Base64 エンコード
+base64 = "0.22"
+
+# エラーハンドリング
+thiserror = "2"
+
+# ログ・トレース
+tracing = "0.1"
+
+# JSON Schema 生成
+schemars = "0.8"
+
+# 設定ファイル
+toml = "0.8"
+
+# CLI (オプション)
+clap = { version = "4", features = ["derive"], optional = true }
+
+# ファイルハッシュ
+sha2 = "0.10"
+
+# 非同期ユーティリティ
+futures = "0.3"
+
+[dev-dependencies]
+tokio-test = "0.4"
+proptest = "1"
+tempfile = "3"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+[[example]]
+name = "basic_ocr"
+path = "examples/basic_ocr.rs"
+
+[[example]]
+name = "vertical_text"
+path = "examples/vertical_text.rs"
+
+[[example]]
+name = "invoice_extraction"
+path = "examples/invoice_extraction.rs"
+
+[[example]]
+name = "batch_processing"
+path = "examples/batch_processing.rs"
+
+[[bin]]
+name = "aed"
+path = "src/bin/cli.rs"
+required-features = ["cli"]
+
+[profile.release]
+lto = true
+codegen-units = 1
+strip = true
