@@ -13,12 +13,52 @@ pub enum AedError {
     // 認証エラー
     // ============================================================
     /// API キーが設定されていません
-    #[error("API キーが設定されていません。環境変数 ANTHROPIC_API_KEY を設定してください")]
-    MissingApiKey,
+    #[error("API キーが設定されていません。環境変数 {env_var} を設定してください")]
+    MissingApiKey {
+        /// 必要な環境変数名
+        env_var: &'static str,
+    },
 
     /// API キーが無効です
-    #[error("API キーが無効です")]
-    InvalidApiKey,
+    #[error("{provider} の API キーが無効です")]
+    InvalidApiKey {
+        /// プロバイダー名
+        provider: &'static str,
+    },
+
+    // ============================================================
+    // プロバイダーエラー
+    // ============================================================
+    /// プロバイダーが利用できません
+    #[error("プロバイダー {provider} は利用できません: {reason}")]
+    ProviderUnavailable {
+        /// プロバイダー名
+        provider: &'static str,
+        /// 理由
+        reason: String,
+    },
+
+    /// プロバイダーが Vision をサポートしていません
+    #[error("プロバイダー {provider} は Vision をサポートしていません")]
+    VisionNotSupported {
+        /// プロバイダー名
+        provider: &'static str,
+    },
+
+    /// プロバイダー固有のエラー
+    #[error("{provider} エラー: {message}")]
+    ProviderError {
+        /// プロバイダー名
+        provider: &'static str,
+        /// エラーメッセージ
+        message: String,
+        /// 元のエラーコード（あれば）
+        code: Option<String>,
+    },
+
+    /// 利用可能なプロバイダーがありません
+    #[error("利用可能なプロバイダーが見つかりません。API キーを設定してください")]
+    NoProviderAvailable,
 
     // ============================================================
     // API エラー
@@ -145,12 +185,60 @@ impl AedError {
     pub fn is_client_error(&self) -> bool {
         matches!(
             self,
-            AedError::MissingApiKey
-                | AedError::InvalidApiKey
+            AedError::MissingApiKey { .. }
+                | AedError::InvalidApiKey { .. }
                 | AedError::UnsupportedFormat(_)
                 | AedError::FileTooLarge { .. }
                 | AedError::FileNotFound(_)
         )
+    }
+
+    /// プロバイダー関連のエラーかどうかを判定
+    pub fn is_provider_error(&self) -> bool {
+        matches!(
+            self,
+            AedError::ProviderUnavailable { .. }
+                | AedError::VisionNotSupported { .. }
+                | AedError::ProviderError { .. }
+                | AedError::NoProviderAvailable
+        )
+    }
+
+    /// MissingApiKey エラーを作成するヘルパー
+    pub fn missing_api_key(env_var: &'static str) -> Self {
+        AedError::MissingApiKey { env_var }
+    }
+
+    /// InvalidApiKey エラーを作成するヘルパー
+    pub fn invalid_api_key(provider: &'static str) -> Self {
+        AedError::InvalidApiKey { provider }
+    }
+
+    /// ProviderError エラーを作成するヘルパー
+    pub fn provider_error(provider: &'static str, message: impl Into<String>) -> Self {
+        AedError::ProviderError {
+            provider,
+            message: message.into(),
+            code: None,
+        }
+    }
+
+    /// ProviderError エラーをコード付きで作成するヘルパー
+    pub fn provider_error_with_code(
+        provider: &'static str,
+        message: impl Into<String>,
+        code: impl Into<String>,
+    ) -> Self {
+        AedError::ProviderError {
+            provider,
+            message: message.into(),
+            code: Some(code.into()),
+        }
+    }
+
+    /// VisionNotSupported エラーを作成するヘルパー
+    pub fn vision_not_supported(provider: &'static str) -> Self {
+        AedError::VisionNotSupported { provider }
     }
 }
 
@@ -176,13 +264,13 @@ mod tests {
         }
         .is_retryable());
 
-        assert!(!AedError::MissingApiKey.is_retryable());
+        assert!(!AedError::missing_api_key("TEST_KEY").is_retryable());
     }
 
     #[test]
     fn test_is_client_error() {
-        assert!(AedError::MissingApiKey.is_client_error());
-        assert!(AedError::InvalidApiKey.is_client_error());
+        assert!(AedError::missing_api_key("TEST_KEY").is_client_error());
+        assert!(AedError::invalid_api_key("TestProvider").is_client_error());
         assert!(AedError::FileNotFound(PathBuf::from("/test")).is_client_error());
 
         assert!(!AedError::RateLimited {
@@ -192,8 +280,19 @@ mod tests {
     }
 
     #[test]
+    fn test_is_provider_error() {
+        assert!(AedError::NoProviderAvailable.is_provider_error());
+        assert!(AedError::ProviderUnavailable {
+            provider: "Test",
+            reason: "Test reason".to_string()
+        }
+        .is_provider_error());
+        assert!(AedError::VisionNotSupported { provider: "Test" }.is_provider_error());
+    }
+
+    #[test]
     fn test_error_display() {
-        let err = AedError::MissingApiKey;
+        let err = AedError::missing_api_key("ANTHROPIC_API_KEY");
         assert!(err.to_string().contains("ANTHROPIC_API_KEY"));
 
         let err = AedError::FileTooLarge {
@@ -201,5 +300,22 @@ mod tests {
             max: 32_000_000,
         };
         assert!(err.to_string().contains("100000000"));
+
+        let err = AedError::provider_error("Claude", "Test error");
+        assert!(err.to_string().contains("Claude"));
+        assert!(err.to_string().contains("Test error"));
+    }
+
+    #[test]
+    fn test_provider_error_helpers() {
+        let err = AedError::provider_error_with_code("OpenAI", "Rate limited", "rate_limit_exceeded");
+        match err {
+            AedError::ProviderError { provider, message, code } => {
+                assert_eq!(provider, "OpenAI");
+                assert_eq!(message, "Rate limited");
+                assert_eq!(code, Some("rate_limit_exceeded".to_string()));
+            }
+            _ => panic!("Expected ProviderError"),
+        }
     }
 }
