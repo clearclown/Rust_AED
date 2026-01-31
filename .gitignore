@@ -5,6 +5,7 @@ Cargo.lock
 # IDE
 .idea/
 .vscode/
+.serena/
 *.swp
 *.swo
 *~
@@ -16,6 +17,7 @@ Thumbs.db
 # Environment
 .env
 .env.local
+!.env.example
 
 # Test artifacts
 *.log
