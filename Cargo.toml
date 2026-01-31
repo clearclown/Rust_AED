@@ -3,17 +3,72 @@ name = "rust-aed"
 version = "0.1.0"
 edition = "2024"
 authors = ["clearclown"]
-description = "Claude Vision API を活用した Rust 製 OCR・ドキュメント抽出ライブラリ"
+description = "マルチプロバイダー対応 Rust 製 OCR・ドキュメント抽出ライブラリ"
 license = "MIT"
 repository = "https://github.com/example/rust-aed"
 documentation = "https://docs.rs/rust-aed"
 readme = "README.md"
-keywords = ["ocr", "claude", "vision", "japanese", "document-extraction"]
+keywords = ["ocr", "claude", "openai", "vision", "document-extraction"]
 categories = ["text-processing", "api-bindings"]
 
 [features]
-default = []
-cli = ["clap"]
+# デフォルトは Claude のみ有効
+default = ["claude"]
+
+# ==== プロバイダー Feature Flags ====
+
+# Anthropic Claude
+claude = []
+
+# OpenAI GPT-4o
+openai = []
+
+# Google Gemini
+gemini = []
+
+# xAI Grok
+xai = []
+
+# ==== 中国系 AI プロバイダー ====
+
+# Alibaba Qwen (DashScope)
+qwen = []
+
+# DeepSeek
+deepseek = []
+
+# Zhipu GLM
+glm = []
+
+# 中国系 AI 全部
+chinese-ai = ["qwen", "deepseek", "glm"]
+
+# ==== ローカル LLM ====
+
+# LM Studio (OpenAI 互換)
+lmstudio = []
+
+# ==== ハイブリッド ====
+
+# GCP Vision + LLM
+hybrid = ["gcp-vision"]
+gcp-vision = []
+
+# ==== ユーティリティ ====
+
+# CLI ツール
+cli = ["clap", "tracing-subscriber"]
+
+# 全プロバイダー有効
+full = [
+    "claude",
+    "openai",
+    "gemini",
+    "xai",
+    "chinese-ai",
+    "lmstudio",
+    "hybrid",
+]
 
 [dependencies]
 # 非同期ランタイム
@@ -44,11 +99,17 @@ toml = "0.8"
 # CLI (オプション)
 clap = { version = "4", features = ["derive"], optional = true }
 
+# ログ subscriber (CLI用)
+tracing-subscriber = { version = "0.3", features = ["env-filter"], optional = true }
+
 # ファイルハッシュ
 sha2 = "0.10"
 
 # 非同期ユーティリティ
 futures = "0.3"
+
+# async trait (dyn-compatible)
+async-trait = "0.1"
 
 [dev-dependencies]
 tokio-test = "0.4"
@@ -71,6 +132,10 @@ path = "examples/invoice_extraction.rs"
 [[example]]
 name = "batch_processing"
 path = "examples/batch_processing.rs"
+
+[[example]]
+name = "batch_to_output"
+path = "examples/batch_to_output.rs"
 
 [[bin]]
 name = "aed"
