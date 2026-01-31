@@ -162,12 +162,10 @@ impl ContentBlock {
 impl MessagesResponse {
     /// テキストコンテンツを取得
     pub fn text(&self) -> Option<&str> {
-        for block in &self.content {
-            if let ResponseContentBlock::Text { text } = block {
-                return Some(text);
-            }
-        }
-        None
+        self.content.first().map(|block| {
+            let ResponseContentBlock::Text { text } = block;
+            text.as_str()
+        })
     }
 }
 

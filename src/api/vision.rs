@@ -194,11 +194,11 @@ mod tests {
 
     #[test]
     fn test_estimate_tokens() {
-        // 1000x1000 = 1,000,000 / 750 ≈ 1333
+        // 1000x1000 = 1,000,000 / 750 = 1333
         assert_eq!(estimate_tokens(1000, 1000), 1333);
 
-        // 1092x1092 (1:1 recommended) ≈ 1590
-        assert_eq!(estimate_tokens(1092, 1092), 1590);
+        // 1092x1092 = 1,192,464 / 750 = 1589 (整数除算)
+        assert_eq!(estimate_tokens(1092, 1092), 1589);
     }
 
     #[test]
